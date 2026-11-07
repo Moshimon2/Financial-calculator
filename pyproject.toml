@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Self-hosted financial calculator for Hungarian investors (compound interest, inflation, ETF costs, TBSZ, Lightyear import)"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+]
 
 [dependency-groups]
 dev = [
@@ -48,6 +50,7 @@ python_version = "3.12"
 strict = true
 mypy_path = "src"
 packages = ["fincalc"]
+plugins = ["pydantic.mypy"]
 
 # --- pytest -----------------------------------------------------------------
 [tool.pytest.ini_options]
@@ -57,3 +60,7 @@ addopts = "-ra --strict-markers --cov=fincalc --cov-report=term-missing"
 [tool.coverage.run]
 branch = true
 source = ["fincalc"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

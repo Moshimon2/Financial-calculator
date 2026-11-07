@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (1. lépés – projektváz)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (2. lépés – kamatos kamat és infláció a core-ban)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -60,7 +60,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 ## Fejlesztési sorrend
 
 1. ✅ Váz: uv, mappastruktúra, ruff, mypy, pytest
-2. core – kamatos kamat és infláció
+2. ✅ core – kamatos kamat és infláció
 3. core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
 4. FastAPI + kalkulátor végpontok
 5. Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
