@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic>=2.9",
+    "pyyaml>=6.0",
 ]
 
 [dependency-groups]
@@ -14,6 +15,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.7",
     "mypy>=1.13",
+    "types-pyyaml>=6.0.12.20261103",
 ]
 
 [build-system]
