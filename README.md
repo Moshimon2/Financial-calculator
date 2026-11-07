@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (3. lépés – a négy kalkulátor a core-ban)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (4. lépés – JSON API a kalkulátorokhoz)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -55,6 +55,25 @@ uv run ruff format --check
 uv run mypy src
 ```
 
+### API indítása helyben
+
+```bash
+uv run uvicorn fincalc.api.main:app --reload
+```
+
+- Swagger UI: <http://localhost:8000/docs>
+- Health: <http://localhost:8000/api/v1/health>
+- Kalkulátorok: `POST /api/v1/calc/compound`, `/inflation`, `/etf-costs`, `/tbsz`
+
+Példa:
+
+```bash
+curl -X POST localhost:8000/api/v1/calc/compound -H 'content-type: application/json' -d '{"initial_amount": 0, "monthly_contribution": 50000, "annual_return_pct": 7, "years": 20, "annual_inflation_pct": 4}'
+```
+
+A pénzösszegek a válaszban kerekítetlen decimális stringek (pl. `"26046332.99127..."`);
+a kerekítés a megjelenítő feladata. Bemenetként szám és string is elfogadott.
+
 Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden commit előtt.
 
 ## Fejlesztési sorrend
@@ -62,7 +81,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 1. ✅ Váz: uv, mappastruktúra, ruff, mypy, pytest
 2. ✅ core – kamatos kamat és infláció
 3. ✅ core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
-4. FastAPI + kalkulátor végpontok
+4. ✅ FastAPI + kalkulátor végpontok
 5. Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
 6. Adatbázis: SQLModel, Alembic, repository
 7. Lightyear importer

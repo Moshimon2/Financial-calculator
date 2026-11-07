@@ -75,6 +75,19 @@ class RealPoint(_Model):
     real: Decimal
 
 
+class CompoundInflationInput(CompoundInput):
+    """Compound interest input with an optional inflation rate for real values."""
+
+    annual_inflation_pct: Decimal | None = Field(
+        default=None, gt=-100, description="If set, real (today's money) values are added"
+    )
+
+
+class CompoundInflationResult(CompoundResult):
+    final_real_balance: Decimal | None = None
+    real_series: list[RealPoint] | None = None
+
+
 # --- ETF costs (TER) -----------------------------------------------------------
 
 

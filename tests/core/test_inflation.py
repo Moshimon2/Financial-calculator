@@ -4,8 +4,14 @@ import pytest
 from pydantic import ValidationError
 
 from fincalc.core.compound import compound
-from fincalc.core.inflation import deflator, inflation, real_series, real_value
-from fincalc.core.models import CompoundInput, InflationInput
+from fincalc.core.inflation import (
+    compound_with_inflation,
+    deflator,
+    inflation,
+    real_series,
+    real_value,
+)
+from fincalc.core.models import CompoundInflationInput, CompoundInput, InflationInput
 
 D = Decimal
 CENT = D("0.01")
@@ -79,3 +85,34 @@ def test_validation_errors(overrides: dict[str, object]) -> None:
     base: dict[str, object] = {"amount": D(1000), "annual_inflation_pct": D(4), "years": 10}
     with pytest.raises(ValidationError):
         InflationInput.model_validate(base | overrides)
+
+
+def test_compound_with_inflation_adds_real_values() -> None:
+    res = compound_with_inflation(
+        CompoundInflationInput(
+            initial_amount=D(0),
+            monthly_contribution=D(50_000),
+            annual_return_pct=D(7),
+            years=20,
+            annual_inflation_pct=D(4),
+        )
+    )
+    assert _q(res.final_balance) == D("26046332.99")
+    assert res.final_real_balance is not None
+    assert _q(res.final_real_balance) == D("11887206.37")
+    assert res.real_series is not None
+    assert len(res.real_series) == len(res.series) == 241
+
+
+def test_compound_with_inflation_without_rate() -> None:
+    res = compound_with_inflation(
+        CompoundInflationInput(initial_amount=D(1000), annual_return_pct=D(5), years=1)
+    )
+    assert res.final_real_balance is None
+    assert res.real_series is None
+    assert (
+        res.final_balance
+        == compound(
+            CompoundInput(initial_amount=D(1000), annual_return_pct=D(5), years=1)
+        ).final_balance
+    )

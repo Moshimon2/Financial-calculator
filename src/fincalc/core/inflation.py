@@ -3,7 +3,16 @@
 from collections.abc import Sequence
 from decimal import Decimal
 
-from fincalc.core.models import CompoundPoint, InflationInput, InflationResult, RealPoint
+from fincalc.core.compound import compound
+from fincalc.core.models import (
+    CompoundInflationInput,
+    CompoundInflationResult,
+    CompoundInput,
+    CompoundPoint,
+    InflationInput,
+    InflationResult,
+    RealPoint,
+)
 
 _ONE = Decimal(1)
 _HUNDRED = Decimal(100)
@@ -42,3 +51,16 @@ def real_series(series: Sequence[CompoundPoint], annual_inflation_pct: Decimal) 
         )
         for p in series
     ]
+
+
+def compound_with_inflation(inp: CompoundInflationInput) -> CompoundInflationResult:
+    """Compound interest result, plus real values when an inflation rate is given."""
+    base = compound(CompoundInput.model_validate(inp.model_dump(exclude={"annual_inflation_pct"})))
+    if inp.annual_inflation_pct is None:
+        return CompoundInflationResult(**base.model_dump())
+    series = real_series(base.series, inp.annual_inflation_pct)
+    return CompoundInflationResult(
+        **base.model_dump(),
+        final_real_balance=series[-1].real,
+        real_series=series,
+    )
