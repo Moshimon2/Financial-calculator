@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (5. lépés – webes felület a kalkulátorokhoz)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (6. lépés – adatbázis réteg)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -75,6 +75,26 @@ curl -X POST localhost:8000/api/v1/calc/compound -H 'content-type: application/j
 A pénzösszegek a válaszban kerekítetlen decimális stringek (pl. `"26046332.99127..."`);
 a kerekítés a megjelenítő feladata. Bemenetként szám és string is elfogadott.
 
+### Adatbázis
+
+SQLite + SQLModel, a séma Alembic migrációkkal követve. Az adatbázis helye a
+`FINCALC_DATABASE_URL` környezeti változóból jön (alapértelmezés: `sqlite:///./data/fincalc.db`).
+
+```bash
+uv run alembic upgrade head
+```
+
+Modellváltozás után új migráció:
+
+```bash
+uv run alembic revision --autogenerate -m "rövid leírás"
+```
+
+- Táblák: `imports` (importnapló) és `transactions` (`src/fincalc/db/models.py`).
+- A pénzösszegek pontosan, szövegként tárolódnak (`DecimalText`), a dátumok UTC-ben (`UTCDateTime`).
+- Duplikátumszűrés a `dedup_hash` egyedi mezővel: bróker-azonosító, vagy ha nincs,
+  dátum + ticker + darab + összeg hash-e (`fincalc.core.transactions`).
+
 ### Frontend
 
 - Szerveroldali Jinja2 sablonok (`src/fincalc/web/templates`), HTMX élő frissítéssel
@@ -93,7 +113,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 3. ✅ core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
 4. ✅ FastAPI + kalkulátor végpontok
 5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
-6. Adatbázis: SQLModel, Alembic, repository
+6. ✅ Adatbázis: SQLModel, Alembic, repository
 7. Lightyear importer
 8. Dashboard véglegesítése
 9. Docker + OMV telepítési leírás
