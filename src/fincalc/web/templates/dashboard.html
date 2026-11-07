@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "macros.html" import stat %}
+{% set texts = t.dashboard %}
+{% block title %}{{ texts.title }}{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>{{ texts.title }}</h1>
+    <p class="lead">{{ texts.lead }}</p>
+  </header>
+  <section class="stats" aria-label="{{ texts.title }}">
+    <div class="stat stat--hero">
+      <span class="stat-label">{{ texts.last_purchase }}</span>
+      <span class="stat-value">–</span>
+      <span class="stat-note">{{ texts.no_data }}</span>
+    </div>
+    {{ stat(texts.total_deposits, "–") }}
+    {{ stat(texts.transaction_count, "0") }}
+  </section>
+  <h2 class="section-title">{{ texts.calculators }}</h2>
+  <div class="cards">
+    {% for key, href in nav if key != "dashboard" %}
+      <a class="card link-card" href="{{ href }}">
+        <h3>{{ t.nav[key] }}</h3>
+        <p>{{ texts.cards[key] }}</p>
+        <span class="link-arrow" aria-hidden="true">→</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endblock %}

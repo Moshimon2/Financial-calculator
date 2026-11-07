@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (4. lépés – JSON API a kalkulátorokhoz)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (5. lépés – webes felület a kalkulátorokhoz)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -55,12 +55,13 @@ uv run ruff format --check
 uv run mypy src
 ```
 
-### API indítása helyben
+### Indítás helyben
 
 ```bash
 uv run uvicorn fincalc.api.main:app --reload
 ```
 
+- Webes felület: <http://localhost:8000/>
 - Swagger UI: <http://localhost:8000/docs>
 - Health: <http://localhost:8000/api/v1/health>
 - Kalkulátorok: `POST /api/v1/calc/compound`, `/inflation`, `/etf-costs`, `/tbsz`
@@ -74,6 +75,15 @@ curl -X POST localhost:8000/api/v1/calc/compound -H 'content-type: application/j
 A pénzösszegek a válaszban kerekítetlen decimális stringek (pl. `"26046332.99127..."`);
 a kerekítés a megjelenítő feladata. Bemenetként szám és string is elfogadott.
 
+### Frontend
+
+- Szerveroldali Jinja2 sablonok (`src/fincalc/web/templates`), HTMX élő frissítéssel
+  (gépelés után 400 ms-mal újraszámol), Chart.js grafikonok.
+- A HTMX és a Chart.js a repóban van (`web/static/vendor/`), így internet nélkül is működik.
+- Minden UI-szöveg: `src/fincalc/web/i18n/hu.py`; számformázás: `src/fincalc/web/formatting.py`
+  (Jinja filterek: `huf`, `num`, `pct`).
+- Világos/sötét mód a rendszerbeállítás szerint (CSS változók, `prefers-color-scheme`).
+
 Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden commit előtt.
 
 ## Fejlesztési sorrend
@@ -82,7 +92,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 2. ✅ core – kamatos kamat és infláció
 3. ✅ core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
 4. ✅ FastAPI + kalkulátor végpontok
-5. Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
+5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
 6. Adatbázis: SQLModel, Alembic, repository
 7. Lightyear importer
 8. Dashboard véglegesítése

@@ -1,0 +1,24 @@
+{% from "macros.html" import stat, errors_box, chart_block %}
+{% set texts = t.etf_costs %}
+{% if errors %}{{ errors_box(errors) }}{% else %}
+  <div class="stats">
+    {{ stat(texts.headline, max_cost | huf, hero=True) }}
+    {{ stat(texts.total_contributed, result.total_contributed | huf) }}
+  </div>
+  <div class="stats">
+    {% for s in result.scenarios %}
+      <div class="stat stat--series">
+        <span class="stat-label"><span class="swatch swatch--{{ loop.index }}" aria-hidden="true"></span>
+          {{ texts.fund.format(ter=s.ter_pct | pct) }}
+          {% if s.ter_pct == result.cheapest_ter_pct %}<span class="badge">{{ texts.cheapest }}</span>{% endif %}
+        </span>
+        <span class="stat-value">{{ s.final_balance | huf }}</span>
+        <span class="stat-note">{{ texts.net_return.format(pct=s.net_annual_return_pct | pct) }}</span>
+        {% if s.cost_vs_cheapest > 0 %}
+          <span class="stat-note stat-note--cost">−{{ s.cost_vs_cheapest | huf }} · {{ texts.costs_more }}</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {{ chart_block(chart, table, "chart-etf") }}
+{% endif %}

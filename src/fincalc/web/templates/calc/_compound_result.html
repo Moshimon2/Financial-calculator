@@ -1,0 +1,13 @@
+{% from "macros.html" import stat, errors_box, chart_block %}
+{% set texts = t.compound %}
+{% if errors %}{{ errors_box(errors) }}{% else %}
+  <div class="stats stats--2col">
+    {{ stat(texts.final_balance, result.final_balance | huf, hero=True) }}
+    {% if result.final_real_balance is not none %}
+      {{ stat(texts.final_real_balance, result.final_real_balance | huf, hero=True) }}
+    {% endif %}
+    {{ stat(texts.total_contributed, result.total_contributed | huf) }}
+    {{ stat(texts.total_return, result.total_return | huf) }}
+  </div>
+  {{ chart_block(chart, table, "chart-compound") }}
+{% endif %}

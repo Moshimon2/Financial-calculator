@@ -1,0 +1,30 @@
+{% from "macros.html" import stat, errors_box %}
+{% set texts = t.tbsz %}
+{% if errors %}{{ errors_box(errors) }}{% else %}
+  <div class="savings card">
+    {% if result.savings > 0 %}
+      <span class="stat-label">{{ texts.savings }}</span>
+      <span class="savings-value">{{ result.savings | huf }}</span>
+    {% else %}
+      <span class="stat-label">{{ texts.no_savings }}</span>
+    {% endif %}
+  </div>
+  <div class="stats">
+    {{ stat(texts.total_contributed, result.total_contributed | huf) }}
+    {{ stat(texts.gross_final, result.gross_final | huf) }}
+    {{ stat(texts.gain, result.gain | huf) }}
+  </div>
+  <div class="compare">
+    {% for title, acc, highlight in [(texts.tbsz_column, result.tbsz, True), (texts.regular_column, result.regular, False)] %}
+      <section class="card account{% if highlight %} account--highlight{% endif %}">
+        <h2>{{ title }}</h2>
+        <dl>
+          <div><dt>{{ texts.pit.format(pct=acc.pit_pct | pct) }}</dt><dd>{{ acc.pit_tax | huf }}</dd></div>
+          <div><dt>{{ texts.social.format(pct=acc.social_pct | pct) }}</dt><dd>{{ acc.social_tax | huf }}</dd></div>
+          <div><dt>{{ texts.total_tax }}</dt><dd>{{ acc.total_tax | huf }}</dd></div>
+          <div class="total"><dt>{{ texts.net_final }}</dt><dd>{{ acc.net_final | huf }}</dd></div>
+        </dl>
+      </section>
+    {% endfor %}
+  </div>
+{% endif %}

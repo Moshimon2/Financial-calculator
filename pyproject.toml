@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
+    "jinja2>=3.1",
     "pydantic>=2.9",
+    "python-multipart>=0.0.12",
     "pyyaml>=6.0",
     "uvicorn[standard]>=0.32",
 ]
@@ -45,6 +47,10 @@ select = [
     "N",        # pep8-naming
     "RUF",      # ruff-specific
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Hungarian UI texts use typographic characters (minus sign, multiplication sign) on purpose.
+"src/fincalc/web/i18n/*.py" = ["RUF001"]
 
 [tool.ruff.format]
 quote-style = "double"
