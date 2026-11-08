@@ -4,7 +4,10 @@
 comma. This is the only place where money is rounded for display.
 """
 
+from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
+from fincalc.settings import display_timezone
 
 NBSP = "\u00a0"
 Number = Decimal | int | float | str
@@ -23,6 +26,18 @@ def format_huf(value: Number) -> str:
     return f"{format_number(value, 0)}{NBSP}Ft"
 
 
+def format_money(value: Number, currency: str) -> str:
+    """HUF without decimals, other currencies with two: '1 234,50 EUR'."""
+    if currency == "HUF":
+        return format_huf(value)
+    return f"{format_number(value, 2)}{NBSP}{currency}"
+
+
+def format_datetime(value: datetime) -> str:
+    """UTC datetime -> local Hungarian format: '2026. 03. 01. 11:30'."""
+    return value.astimezone(display_timezone()).strftime("%Y. %m. %d. %H:%M")
+
+
 def format_pct(value: Number, decimals: int = 2) -> str:
     """Percent with trailing zeros trimmed: 7 -> '7%', 0.07 -> '0,07%'."""
     text = format_number(value, decimals)
@@ -32,7 +47,10 @@ def format_pct(value: Number, decimals: int = 2) -> str:
 
 
 def format_input(value: Number) -> str:
-    """Value prefilled in a text input: grouping kept, no suffix ('50 000', '7,5')."""
+    """Number with trailing zeros trimmed: '50 000', '7,5', '3,25'.
+
+    Used for prefilled input values and share quantities.
+    """
     d = Decimal(str(value)).normalize()
     decimals = max(0, -d.as_tuple().exponent)  # type: ignore[operator]
     return format_number(d, decimals)

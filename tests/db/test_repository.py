@@ -8,34 +8,17 @@ from sqlmodel import Session, col, select
 from fincalc.core.transactions import Transaction, TransactionType
 from fincalc.db.models import ImportRecord, TransactionRecord
 from fincalc.db.repository import Repository, TransactionFilter
+from tests.helpers import make_tx, seed
 
 D = Decimal
 
 
 def tx(day: int, **kw: object) -> Transaction:
-    base: dict[str, object] = {
-        "broker": "lightyear",
-        "external_id": f"LY-{day}",
-        "type": TransactionType.BUY,
-        "executed_at": datetime(2026, 1, day, 9, 0, tzinfo=UTC),
-        "ticker": "VWCE",
-        "quantity": D("0.123456789"),
-        "price": D("123.45"),
-        "amount": D("-15.24"),
-        "fee": D("0.10"),
-        "currency": "EUR",
-    }
-    return Transaction.model_validate(base | kw)
+    return make_tx(day, **kw)
 
 
 def save(repo: Repository, txs: list[Transaction], failed: int = 0) -> ImportRecord:
-    return repo.save_import(
-        broker="lightyear",
-        filename="statement.csv",
-        transactions=txs,
-        rows_total=len(txs) + failed,
-        rows_failed=failed,
-    )
+    return seed(repo.session, txs, failed)
 
 
 def test_save_import_counts_and_roundtrip(session: Session) -> None:
@@ -168,3 +151,19 @@ def test_save_import_rolls_back_on_error(session: Session, monkeypatch: pytest.M
     monkeypatch.undo()
     assert repo.count_transactions() == 0
     assert repo.list_imports() == []
+
+
+def test_deposit_totals_per_currency(session: Session) -> None:
+    repo = Repository(session)
+    assert repo.deposit_totals() == {}
+    dep = {"type": TransactionType.DEPOSIT, "ticker": None, "quantity": None, "price": None}
+    save(
+        repo,
+        [
+            tx(1, **dep, amount=D("100.50")),
+            tx(2, **dep, amount=D("200"), currency="USD"),
+            tx(3, **dep, amount=D("0.25")),
+            tx(4),
+        ],
+    )
+    assert repo.deposit_totals() == {"EUR": D("100.75"), "USD": D("200")}

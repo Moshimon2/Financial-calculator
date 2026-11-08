@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import func
 from sqlmodel import Session, col, select
@@ -133,3 +134,13 @@ class Repository:
 
     def count_transactions(self) -> int:
         return self.session.exec(select(func.count()).select_from(TransactionRecord)).one()
+
+    def deposit_totals(self) -> dict[str, Decimal]:
+        """Sum of deposits per currency (different currencies are never added up)."""
+        stmt = select(col(TransactionRecord.currency), col(TransactionRecord.amount)).where(
+            col(TransactionRecord.type) == TransactionType.DEPOSIT
+        )
+        totals: dict[str, Decimal] = {}
+        for currency, amount in self.session.exec(stmt).all():
+            totals[currency] = totals.get(currency, Decimal(0)) + amount
+        return dict(sorted(totals.items()))

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from sqlmodel import Session
 
 from fincalc.api.dependencies import get_tax_config
 from fincalc.core.etf_costs import etf_costs
@@ -21,8 +22,17 @@ from fincalc.core.inflation import compound_with_inflation, inflation
 from fincalc.core.models import CompoundInflationInput, EtfCostInput, InflationInput, TbszInput
 from fincalc.core.tax import TaxConfig
 from fincalc.core.tbsz import tbsz
+from fincalc.db.repository import Repository
+from fincalc.db.session import get_session
 from fincalc.web import charts
-from fincalc.web.formatting import format_huf, format_input, format_number, format_pct
+from fincalc.web.formatting import (
+    format_datetime,
+    format_huf,
+    format_input,
+    format_money,
+    format_number,
+    format_pct,
+)
 from fincalc.web.forms import FormField, defaults, parse_form, validation_messages
 from fincalc.web.i18n.hu import TEXTS
 
@@ -30,7 +40,14 @@ WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
 
 templates = Jinja2Templates(directory=WEB_DIR / "templates")
-templates.env.filters.update(huf=format_huf, num=format_number, pct=format_pct)
+templates.env.filters.update(
+    huf=format_huf,
+    num=format_number,
+    pct=format_pct,
+    money=format_money,
+    dt=format_datetime,
+    qty=format_input,
+)
 templates.env.globals["t"] = TEXTS
 
 router = APIRouter(include_in_schema=False)
@@ -180,5 +197,12 @@ templates.env.globals["nav"] = [("dashboard", "/")] + [(p.key, f"/calc/{p.path}"
 
 
 @router.get("/", name="dashboard")
-async def dashboard(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "dashboard.html", {"page": "dashboard"})
+def dashboard(request: Request, session: Annotated[Session, Depends(get_session)]) -> HTMLResponse:
+    repo = Repository(session)
+    context = {
+        "page": "dashboard",
+        "latest": repo.latest_purchase(),
+        "deposits": repo.deposit_totals(),
+        "transaction_count": repo.count_transactions(),
+    }
+    return templates.TemplateResponse(request, "dashboard.html", context)

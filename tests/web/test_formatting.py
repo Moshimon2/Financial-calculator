@@ -1,11 +1,14 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
 from fincalc.web.formatting import (
     NBSP,
+    format_datetime,
     format_huf,
     format_input,
+    format_money,
     format_number,
     format_pct,
     parse_number,
@@ -72,3 +75,14 @@ def test_parse_number(raw: str, expected: Decimal) -> None:
 def test_parse_number_invalid(raw: str) -> None:
     with pytest.raises(ValueError):
         parse_number(raw)
+
+
+def test_format_money() -> None:
+    assert format_money(D("1234.5"), "EUR") == f"1{NBSP}234,50{NBSP}EUR"
+    assert format_money(D("1234.5"), "HUF") == f"1{NBSP}235{NBSP}Ft"
+
+
+def test_format_datetime_local_time() -> None:
+    # Summer time (CEST, UTC+2) and winter time (CET, UTC+1)
+    assert format_datetime(datetime(2026, 7, 1, 8, 5, tzinfo=UTC)) == "2026. 07. 01. 10:05"
+    assert format_datetime(datetime(2026, 1, 1, 8, 5, tzinfo=UTC)) == "2026. 01. 01. 09:05"

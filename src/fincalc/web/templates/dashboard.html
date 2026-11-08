@@ -7,14 +7,39 @@
     <h1>{{ texts.title }}</h1>
     <p class="lead">{{ texts.lead }}</p>
   </header>
-  <section class="stats" aria-label="{{ texts.title }}">
-    <div class="stat stat--hero">
+  <section class="stats dashboard-stats" aria-label="{{ texts.title }}">
+    <div class="stat stat--hero last-purchase">
       <span class="stat-label">{{ texts.last_purchase }}</span>
-      <span class="stat-value">–</span>
-      <span class="stat-note">{{ texts.no_data }}</span>
+      {% if latest %}
+        <span class="stat-value">
+          {{ latest.ticker or latest.isin or "–" }}
+          <span class="stat-value-secondary">{{ latest.amount | abs | money(latest.currency) }}</span>
+        </span>
+        <span class="stat-note">
+          {{ latest.executed_at | dt }}
+          {% if latest.quantity is not none %} · {{ texts.purchase_quantity.format(qty=latest.quantity | qty) }}{% endif %}
+        </span>
+        {% if latest.external_id %}
+          <span class="stat-note stat-note--id">{{ texts.purchase_id.format(id=latest.external_id) }}</span>
+        {% endif %}
+      {% else %}
+        <span class="stat-value">–</span>
+        <span class="stat-note">{{ texts.no_data }}</span>
+      {% endif %}
     </div>
-    {{ stat(texts.total_deposits, "–") }}
-    {{ stat(texts.transaction_count, "0") }}
+    <div class="stat">
+      <span class="stat-label">{{ texts.total_deposits }}</span>
+      {% if deposits %}
+        {% for currency, total in deposits.items() %}
+          <span class="stat-value">{{ total | money(currency) }}</span>
+        {% endfor %}
+        {% if deposits | length > 1 %}<span class="stat-note">{{ texts.deposits_note }}</span>{% endif %}
+      {% else %}
+        <span class="stat-value">–</span>
+        <span class="stat-note">{{ texts.no_deposits }}</span>
+      {% endif %}
+    </div>
+    {{ stat(texts.transaction_count, transaction_count | num) }}
   </section>
   <h2 class="section-title">{{ texts.calculators }}</h2>
   <div class="cards">

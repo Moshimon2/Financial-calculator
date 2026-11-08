@@ -163,6 +163,10 @@ main { padding-block: 2rem 1rem; }
 .stat-value { font-size: 1.3rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat--hero .stat-value { font-size: clamp(1.6rem, 3vw, 2rem); letter-spacing: -0.01em; }
 .stat-note { color: var(--text-muted); font-size: 0.85rem; }
+.stat-note--id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; overflow-wrap: anywhere; }
+.stat-value-secondary { display: block; font-size: 1.05rem; font-weight: 600; color: var(--text-secondary); margin-top: 0.15rem; }
+.dashboard-stats { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 760px) { .dashboard-stats { grid-template-columns: 1fr; } }
 .stat-note--cost { color: var(--text-secondary); }
 
 .swatch { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }

@@ -53,6 +53,10 @@ TEXTS: dict[str, Any] = {
         "total_deposits": "Összes befizetés",
         "transaction_count": "Tranzakciók száma",
         "no_data": "Még nincs importált tranzakció. A Lightyear import hamarosan érkezik.",
+        "no_deposits": "Még nincs befizetés.",
+        "purchase_quantity": "{qty} db",
+        "purchase_id": "Azonosító: {id}",
+        "deposits_note": "Devizánként, váltás nélkül.",
         "calculators": "Kalkulátorok",
         "cards": {
             "compound": "Mennyi lesz a havi megtakarításból, névleges és mai értéken.",

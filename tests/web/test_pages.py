@@ -1,17 +1,13 @@
 import re
-from collections.abc import Iterator
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
-from fincalc.api.main import create_app
+from fincalc.core.transactions import TransactionType
 from fincalc.web.formatting import NBSP
-
-
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    with TestClient(create_app()) as c:
-        yield c
+from tests.helpers import make_tx, seed
 
 
 def _text(html: str) -> str:
@@ -151,3 +147,31 @@ def test_tbsz_no_savings_when_broken_early(client: TestClient) -> None:
 def test_web_routes_not_in_openapi(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
     assert all(p.startswith("/api/v1/") for p in paths)
+
+
+def test_dashboard_empty_state(client: TestClient) -> None:
+    text = _text(client.get("/").text)
+    assert "Még nincs importált tranzakció" in text
+    assert "Még nincs befizetés" in text
+
+
+def test_dashboard_with_data(client: TestClient, session: Session) -> None:
+    dep = {"type": TransactionType.DEPOSIT, "ticker": None, "quantity": None, "price": None}
+    seed(
+        session,
+        [
+            make_tx(2, **dep, amount=Decimal("1500")),
+            make_tx(3, **dep, amount=Decimal("120000"), currency="HUF"),
+            make_tx(4, ticker="CSPX", quantity=Decimal("2.500"), amount=Decimal("-1234.5")),
+            make_tx(1),
+        ],
+    )
+    text = _text(client.get("/").text)
+    assert "0,123456789 db" not in text  # only the latest purchase is shown
+    # 09:00 UTC on 4 Jan is 10:00 in Budapest (CET)
+    assert "CSPX 1 234,50 EUR" in text
+    assert "2026. 01. 04. 10:00 · 2,5 db" in text
+    assert "Azonosító: LY-4" in text
+    assert "1 500,00 EUR" in text
+    assert "120 000 Ft" in text
+    assert "Tranzakciók száma 4" in text

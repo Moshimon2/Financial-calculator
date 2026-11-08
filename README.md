@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (6. lépés – adatbázis réteg)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (7. lépés – dashboard; a Lightyear import még hátravan)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -65,6 +65,8 @@ uv run uvicorn fincalc.api.main:app --reload
 - Swagger UI: <http://localhost:8000/docs>
 - Health: <http://localhost:8000/api/v1/health>
 - Kalkulátorok: `POST /api/v1/calc/compound`, `/inflation`, `/etf-costs`, `/tbsz`
+- Tranzakciók: `GET /api/v1/transactions` (szűrés: `date_from`, `date_to`, `ticker`, `type`,
+  lapozás: `limit`, `offset`), `GET /api/v1/transactions/latest`
 
 Példa:
 
@@ -79,6 +81,9 @@ a kerekítés a megjelenítő feladata. Bemenetként szám és string is elfogad
 
 SQLite + SQLModel, a séma Alembic migrációkkal követve. Az adatbázis helye a
 `FINCALC_DATABASE_URL` környezeti változóból jön (alapértelmezés: `sqlite:///./data/fincalc.db`).
+
+Induláskor az app automatikusan lefuttatja a migrációkat (`FINCALC_AUTO_MIGRATE=0`
+kikapcsolja). Kézzel:
 
 ```bash
 uv run alembic upgrade head
@@ -114,9 +119,10 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 4. ✅ FastAPI + kalkulátor végpontok
 5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
 6. ✅ Adatbázis: SQLModel, Alembic, repository
-7. Lightyear importer
-8. Dashboard véglegesítése
-9. Docker + OMV telepítési leírás
+7. ✅ Dashboard véglegesítése: utolsó vásárlás kártya és összesítők, tranzakció API
+8. Docker + OMV telepítési leírás
+9. Lightyear importer, import és tranzakciók oldal – **egy valódi, anonimizált
+   Lightyear CSV mintára vár** (még nincs Lightyear fiók), ezért került a végére.
 
 ## Futtatás Dockerben (OMV)
 
