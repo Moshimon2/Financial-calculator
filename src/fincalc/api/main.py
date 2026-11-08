@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fincalc import __version__
 from fincalc.api.routes import calculators, health, transactions
 from fincalc.db.migrate import upgrade_to_head
+from fincalc.db.session import database_url, ensure_sqlite_writable
 from fincalc.settings import auto_migrate
 from fincalc.web.routes import STATIC_DIR
 from fincalc.web.routes import router as web_router
@@ -18,6 +19,7 @@ API_PREFIX = "/api/v1"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    ensure_sqlite_writable(database_url())
     if auto_migrate():
         upgrade_to_head()
     yield

@@ -1,0 +1,19 @@
+# Keep the build context small and free of local state.
+.git
+.venv
+.env
+data/
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov/
+tests/
+docs/
+*.db
+*.sqlite
+*.sqlite3
+docker-compose.yml
+Dockerfile

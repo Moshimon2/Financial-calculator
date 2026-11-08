@@ -1,0 +1,37 @@
+# fincalc - single container, SQLite database on a volume.
+#
+# OMV: paste this file in Services -> Compose -> Files (see README).
+# The image is built directly from the public GitHub repository, so no
+# source checkout is needed on the server. For a local build from this
+# folder set FINCALC_BUILD_CONTEXT=. (e.g. in .env).
+#
+# Settings come from the .env file next to this file (see .env.example).
+
+services:
+  fincalc:
+    build:
+      context: ${FINCALC_BUILD_CONTEXT:-https://github.com/Moshimon2/Financial-calculator.git#main}
+    image: fincalc:latest
+    container_name: fincalc
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${FINCALC_PORT:-8090}:8000"
+    volumes:
+      # Put this on the HDD (not the system SSD) and include it in your backups.
+      - ${FINCALC_DATA_DIR:-./data}:/app/data
+    environment:
+      FINCALC_DATABASE_URL: sqlite:////app/data/fincalc.db
+      FINCALC_TIMEZONE: ${FINCALC_TIMEZONE:-Europe/Budapest}
+      FINCALC_LOG_LEVEL: ${FINCALC_LOG_LEVEL:-info}
+      TZ: ${FINCALC_TIMEZONE:-Europe/Budapest}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

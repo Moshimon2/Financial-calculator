@@ -3,7 +3,7 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (7. lépés – dashboard; a Lightyear import még hátravan)**. A funkciók lépésenként érkeznek,
+> Állapot: **fejlesztés alatt (8. lépés – Docker és OMV telepítés; a Lightyear import még hátravan)**. A funkciók lépésenként érkeznek,
 > lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
 
 ## Alapelvek
@@ -120,10 +120,89 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
 6. ✅ Adatbázis: SQLModel, Alembic, repository
 7. ✅ Dashboard véglegesítése: utolsó vásárlás kártya és összesítők, tranzakció API
-8. Docker + OMV telepítési leírás
+8. ✅ Docker + OMV telepítési leírás
 9. Lightyear importer, import és tranzakciók oldal – **egy valódi, anonimizált
    Lightyear CSV mintára vár** (még nincs Lightyear fiók), ezért került a végére.
 
-## Futtatás Dockerben (OMV)
+## Futtatás Dockerben
 
-A 9. lépésben kerül kidolgozásra.
+Egy konténer (`python:3.12-slim`, több lépcsős build, nem root felhasználó), az SQLite
+adatbázis egy kötetre kerül, így újraépítésnél sem vész el. Induláskor lefutnak az Alembic
+migrációk. A konténer a 8000-es porton figyel, a host felé alapból a **8090**-es port megy.
+
+A `docker-compose.yml` alapból **közvetlenül a GitHub repóból építi** az image-et
+(`main` ág), így a szerveren nem kell a forráskód. Beállítások: `.env.example`.
+
+| Változó | Alapérték | Jelentés |
+|---|---|---|
+| `FINCALC_DATA_DIR` | `./data` | Host mappa az adatbázisnak (OMV-n a HDD-n!) |
+| `FINCALC_PORT` | `8090` | Host port |
+| `PUID` / `PGID` | `1000` / `1000` | Ezzel a user/csoporttal fut a konténer; írnia kell a mappát |
+| `FINCALC_TIMEZONE` | `Europe/Budapest` | Megjelenítési időzóna (tárolás UTC-ben) |
+| `FINCALC_LOG_LEVEL` | `info` | `critical`, `error`, `warning`, `info`, `debug` |
+| `FINCALC_BUILD_CONTEXT` | GitHub repó | `.` = helyi forrásból épít |
+
+### Helyben (fejlesztői gépen)
+
+```bash
+cp .env.example .env
+```
+
+A `.env`-ben állítsd be: `FINCALC_BUILD_CONTEXT=.`, majd:
+
+```bash
+docker compose up -d --build
+```
+
+Felület: <http://localhost:8090>
+
+### Telepítés OMV-re a Compose plugin felületén (terminál nélkül)
+
+Előfeltétel: OMV 7, telepített **openmediavault-compose** plugin
+(*Rendszer → Bővítmények*), és a *Szolgáltatások → Compose → Beállítások* alatt
+megadott mappa a compose fájloknak.
+
+1. **Adatmappa a HDD-n.** *Tárhely → Megosztott mappák → Létrehozás*: név `fincalc`,
+   fájlrendszer: a **HDD** (ne a rendszer SSD), jogosultság az alapértelmezett
+   („Administrator: read/write, Users: read/write, Others: read-only”).
+   Mentés után a listában látszik az abszolút útvonal, pl.
+   `/srv/dev-disk-by-uuid-1234abcd-…/fincalc/` – ezt jegyezd fel.
+2. **Compose fájl.** *Szolgáltatások → Compose → Fájlok → Létrehozás (+)*:
+   - **Név:** `fincalc`
+   - **Fájl:** másold be a repó `docker-compose.yml` tartalmát változtatás nélkül.
+   - **Környezet (Environment):** másold be ezt, az útvonalat az 1. lépésből cserélve:
+
+     ```
+     FINCALC_DATA_DIR=/srv/dev-disk-by-uuid-1234abcd-…/fincalc
+     FINCALC_PORT=8090
+     PUID=1000
+     PGID=100
+     FINCALC_TIMEZONE=Europe/Budapest
+     FINCALC_LOG_LEVEL=info
+     ```
+
+     A `PGID=100` az OMV `users` csoportja: az alapértelmezett jogosultságú megosztott
+     mappát ez a csoport írhatja, így nincs szükség `chown`-ra.
+   - Mentés.
+3. **Indítás.** Jelöld ki a `fincalc` sort, és nyomd meg az **Up** gombot. Az első
+   indításkor az OMV letölti a forrást a GitHubról és megépíti az image-et
+   (pár perc). Utána a konténer állapota *healthy* lesz
+   (*Szolgáltatások → Compose → Konténerek*).
+4. **Megnyitás:** `http://<omv-ip-cime>:8090`
+
+**Frissítés új verzióra:** a `fincalc` sornál **Down**, majd **Build** (újraépíti a
+`main` ág aktuális állapotából), végül **Up**. Az adatbázis a megosztott mappában marad.
+
+**Ha a konténer újraindul és nem lesz healthy:** a naplóban
+(*Konténerek → fincalc → Napló*) a `Database folder … is not writable` üzenet azt
+jelenti, hogy a `PUID`/`PGID` nem írhatja az adatmappát – ellenőrizd az 1. lépés
+jogosultságait vagy a `PGID` értékét.
+
+**Mentés:** a `fincalc` megosztott mappát vedd fel a meglévő backup rutinba
+(pl. *Szolgáltatások → Rsync* vagy a backup plugin). Az SQLite fájlt akkor a
+legbiztonságosabb másolni, amikor épp nem írsz bele (pl. éjszakai mentés), vagy
+mentés előtt **Down**.
+
+**Biztonság:** az MVP-ben nincs bejelentkezés. Csak a helyi hálózaton használd,
+ne nyiss rá portot a routeren, és ne tedd ki reverse proxyval az internetre, amíg
+nincs hitelesítés (lásd roadmap).

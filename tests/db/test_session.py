@@ -29,3 +29,18 @@ def test_get_session_creates_folder_and_enables_fks(
     finally:
         db_session.get_engine().dispose()
         db_session.get_engine.cache_clear()
+
+
+def test_ensure_sqlite_writable(tmp_path: Path) -> None:
+    db_session.ensure_sqlite_writable("sqlite://")  # in-memory: nothing to check
+    db_session.ensure_sqlite_writable("postgresql://u@h/db")  # not SQLite
+    db_session.ensure_sqlite_writable(f"sqlite:///{tmp_path / 'new' / 'x.db'}")
+    assert (tmp_path / "new").is_dir()
+
+
+def test_ensure_sqlite_writable_reports_permission_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("os.access", lambda *_: False)
+    with pytest.raises(RuntimeError, match=r"not writable.*PUID/PGID"):
+        db_session.ensure_sqlite_writable(f"sqlite:///{tmp_path / 'x.db'}")

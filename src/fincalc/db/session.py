@@ -40,6 +40,25 @@ def make_engine(url: str, **kwargs: Any) -> Engine:
     return engine
 
 
+def ensure_sqlite_writable(url: str) -> None:
+    """Fail early with a clear message if the SQLite folder is not writable.
+
+    Typical cause in Docker: the data folder on the host belongs to another user
+    than the container's PUID/PGID.
+    """
+    parsed = make_url(url)
+    if parsed.get_backend_name() != "sqlite" or parsed.database in (None, "", ":memory:"):
+        return
+    folder = Path(parsed.database).resolve().parent
+    folder.mkdir(parents=True, exist_ok=True)
+    if not os.access(folder, os.W_OK | os.X_OK):
+        raise RuntimeError(
+            f"Database folder {folder} is not writable by uid={os.getuid()} gid={os.getgid()}. "
+            "Make the data folder on the host owned by this user, or set PUID/PGID "
+            "in .env to the folder's owner."
+        )
+
+
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
     return make_engine(database_url())
