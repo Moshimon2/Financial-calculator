@@ -150,7 +150,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
 6. ✅ Adatbázis: SQLModel, Alembic, repository
 7. ✅ Dashboard véglegesítése: utolsó vásárlás kártya és összesítők, tranzakció API
-8. ✅ Docker + OMV telepítési leírás
+8. ✅ Docker + OMV telepítési leírás, GitHub Actions image build (GHCR)
 9. ✅ Lightyear importer, import és tranzakciók oldal, CLI
 
 ## Futtatás Dockerben
@@ -159,25 +159,32 @@ Egy konténer (`python:3.12-slim`, több lépcsős build, nem root felhasználó
 adatbázis egy kötetre kerül, így újraépítésnél sem vész el. Induláskor lefutnak az Alembic
 migrációk. A konténer a 8000-es porton figyel, a host felé alapból a **8090**-es port megy.
 
-A `docker-compose.yml` alapból **közvetlenül a GitHub repóból építi** az image-et
-(`main` ág), így a szerveren nem kell a forráskód. Beállítások: `.env.example`.
+**Kész image:** minden `main` ágra feltöltött változás után a GitHub Actions
+(`.github/workflows/docker.yml`) lefuttatja az ellenőrzéseket (ruff, mypy, pytest), majd
+megépíti az image-et (amd64 + arm64), és feltölti ide:
+`ghcr.io/moshimon2/financial-calculator` (`latest` és `sha-<rövid hash>` címkével).
+A szerverre így nem kell kódot másolni, a repó lehet privát, a frissítés egy gombnyomás.
+
+| Fájl | Mire |
+|---|---|
+| `docker-compose.omv.yml` | OMV / szerver: a kész image-et húzza le a GHCR-ről |
+| `docker-compose.yml` | Helyi build ebből a mappából (fejlesztés, tesztelés) |
+
+Beállítások (`.env.example`):
 
 | Változó | Alapérték | Jelentés |
 |---|---|---|
-| `FINCALC_DATA_DIR` | `./data` | Host mappa az adatbázisnak (OMV-n a HDD-n!) |
+| `FINCALC_DATA_DIR` | – (OMV-n kötelező) | Host mappa az adatbázisnak (OMV-n a HDD-n!) |
 | `FINCALC_PORT` | `8090` | Host port |
-| `PUID` / `PGID` | `1000` / `1000` | Ezzel a user/csoporttal fut a konténer; írnia kell a mappát |
+| `PUID` / `PGID` | `1000` / `100` | Ezzel a user/csoporttal fut a konténer; írnia kell a mappát |
 | `FINCALC_TIMEZONE` | `Europe/Budapest` | Megjelenítési időzóna (tárolás UTC-ben) |
 | `FINCALC_LOG_LEVEL` | `info` | `critical`, `error`, `warning`, `info`, `debug` |
-| `FINCALC_BUILD_CONTEXT` | GitHub repó | `.` = helyi forrásból épít |
 
 ### Helyben (fejlesztői gépen)
 
 ```bash
 cp .env.example .env
 ```
-
-A `.env`-ben állítsd be: `FINCALC_BUILD_CONTEXT=.`, majd:
 
 ```bash
 docker compose up -d --build
@@ -191,6 +198,21 @@ Előfeltétel: OMV 7, telepített **openmediavault-compose** plugin
 (*Rendszer → Bővítmények*), és a *Szolgáltatások → Compose → Beállítások* alatt
 megadott mappa a compose fájloknak.
 
+**0. Egyszeri beállítás: hozzáférés az image-hez.** Privát repóból a GitHub az image-et
+is privátként hozza létre (az első sikeres `main` build után jelenik meg). Két lehetőség:
+
+- **Egyszerűbb:** tedd nyilvánossá **csak az image-et**, a kód repója privát marad.
+  GitHub → a profilod → **Packages** → `financial-calculator` → **Package settings** →
+  **Change visibility** → **Public**. Az image-ben nincs jelszó és nincs adat, csak a program
+  (de mivel Python, aki letölti, a forrásfájlokat is látja benne).
+- **Ha az image is privát maradjon:** készíts egy GitHub tokent `read:packages` joggal
+  (GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)),
+  és SSH-ban a szerveren egyszer lépj be vele (jelszóként a tokent add meg):
+
+  ```bash
+  docker login ghcr.io -u Moshimon2
+  ```
+
 1. **Adatmappa a HDD-n.** *Tárhely → Megosztott mappák → Létrehozás*: név `fincalc`,
    fájlrendszer: a **HDD** (ne a rendszer SSD), jogosultság az alapértelmezett
    („Administrator: read/write, Users: read/write, Others: read-only”).
@@ -198,7 +220,7 @@ megadott mappa a compose fájloknak.
    `/srv/dev-disk-by-uuid-1234abcd-…/fincalc/` – ezt jegyezd fel.
 2. **Compose fájl.** *Szolgáltatások → Compose → Fájlok → Létrehozás (+)*:
    - **Név:** `fincalc`
-   - **Fájl:** másold be a repó `docker-compose.yml` tartalmát változtatás nélkül.
+   - **Fájl:** másold be a repó `docker-compose.omv.yml` tartalmát változtatás nélkül.
    - **Környezet (Environment):** másold be ezt, az útvonalat az 1. lépésből cserélve:
 
      ```
@@ -213,19 +235,20 @@ megadott mappa a compose fájloknak.
      A `PGID=100` az OMV `users` csoportja: az alapértelmezett jogosultságú megosztott
      mappát ez a csoport írhatja, így nincs szükség `chown`-ra.
    - Mentés.
-3. **Indítás.** Jelöld ki a `fincalc` sort, és nyomd meg az **Up** gombot. Az első
-   indításkor az OMV letölti a forrást a GitHubról és megépíti az image-et
-   (pár perc). Utána a konténer állapota *healthy* lesz
+3. **Indítás.** Jelöld ki a `fincalc` sort, és nyomd meg az **Up** gombot. Letölti az
+   image-et és elindítja; pár másodperc múlva az állapota *healthy*
    (*Szolgáltatások → Compose → Konténerek*).
 4. **Megnyitás:** `http://<omv-ip-cime>:8090`
 
-**Frissítés új verzióra:** a `fincalc` sornál **Down**, majd **Build** (újraépíti a
-`main` ág aktuális állapotából), végül **Up**. Az adatbázis a megosztott mappában marad.
+**Frissítés új verzióra:** a `fincalc` sornál **Up**. A `pull_policy: always` miatt
+mindig a legfrissebb image-et tölti le, az adatbázis-migráció automatikusan lefut,
+az adatok a megosztott mappában maradnak.
 
 **Ha a konténer újraindul és nem lesz healthy:** a naplóban
 (*Konténerek → fincalc → Napló*) a `Database folder … is not writable` üzenet azt
 jelenti, hogy a `PUID`/`PGID` nem írhatja az adatmappát – ellenőrizd az 1. lépés
-jogosultságait vagy a `PGID` értékét.
+jogosultságait vagy a `PGID` értékét. Ha az image letöltése `denied` / `unauthorized`
+hibával áll meg, a 0. lépés hiányzik.
 
 **Mentés:** a `fincalc` megosztott mappát vedd fel a meglévő backup rutinba
 (pl. *Szolgáltatások → Rsync* vagy a backup plugin). Az SQLite fájlt akkor a

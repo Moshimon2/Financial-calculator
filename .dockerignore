@@ -15,5 +15,6 @@ docs/
 *.db
 *.sqlite
 *.sqlite3
-docker-compose.yml
+docker-compose*.yml
+.github
 Dockerfile

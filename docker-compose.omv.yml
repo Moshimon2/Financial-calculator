@@ -1,0 +1,33 @@
+# fincalc on OMV - paste this into the Compose plugin
+# (Services -> Compose -> Files -> Create), settings in its "Environment" field
+# (see .env.example). Uses the ready-made image that GitHub Actions publishes
+# from the main branch, so no source code is needed on the server.
+# Updating = press "Up" (pull_policy: always fetches the newest image first).
+
+services:
+  fincalc:
+    image: ghcr.io/moshimon2/financial-calculator:latest
+    pull_policy: always
+    container_name: fincalc
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-100}"
+    ports:
+      - "${FINCALC_PORT:-8090}:8000"
+    volumes:
+      # Put this on the HDD (not the system SSD) and include it in your backups.
+      - ${FINCALC_DATA_DIR:?set FINCALC_DATA_DIR to the data folder on the HDD}:/app/data
+    environment:
+      FINCALC_DATABASE_URL: sqlite:////app/data/fincalc.db
+      FINCALC_TIMEZONE: ${FINCALC_TIMEZONE:-Europe/Budapest}
+      FINCALC_LOG_LEVEL: ${FINCALC_LOG_LEVEL:-info}
+      TZ: ${FINCALC_TIMEZONE:-Europe/Budapest}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

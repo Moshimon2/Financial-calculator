@@ -1,24 +1,18 @@
-# fincalc - single container, SQLite database on a volume.
-#
-# OMV: paste this file in Services -> Compose -> Files (see README).
-# The image is built directly from the public GitHub repository, so no
-# source checkout is needed on the server. For a local build from this
-# folder set FINCALC_BUILD_CONTEXT=. (e.g. in .env).
+# fincalc - local build from this checkout (development / testing).
+# For the OMV server use docker-compose.omv.yml (ready-made image from GHCR).
 #
 # Settings come from the .env file next to this file (see .env.example).
 
 services:
   fincalc:
-    build:
-      context: ${FINCALC_BUILD_CONTEXT:-https://github.com/Moshimon2/Financial-calculator.git#main}
-    image: fincalc:latest
+    build: .
+    image: fincalc:local
     container_name: fincalc
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
     ports:
       - "${FINCALC_PORT:-8090}:8000"
     volumes:
-      # Put this on the HDD (not the system SSD) and include it in your backups.
       - ${FINCALC_DATA_DIR:-./data}:/app/data
     environment:
       FINCALC_DATABASE_URL: sqlite:////app/data/fincalc.db
