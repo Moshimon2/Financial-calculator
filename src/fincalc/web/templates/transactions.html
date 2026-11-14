@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "macros_tx.html" import tx_amount, type_badge %}
+{% set texts = t.transactions %}
+{% block title %}{{ texts.title }}{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>{{ texts.title }}</h1>
+    <p class="lead">{{ texts.lead }}</p>
+  </header>
+
+  <form class="card filters" method="get" action="/transactions">
+    <div class="field">
+      <label for="f-date_from">{{ texts.filter.date_from }}</label>
+      <div class="input-group"><input id="f-date_from" type="date" name="date_from" value="{{ filters.date_from }}"></div>
+    </div>
+    <div class="field">
+      <label for="f-date_to">{{ texts.filter.date_to }}</label>
+      <div class="input-group"><input id="f-date_to" type="date" name="date_to" value="{{ filters.date_to }}"></div>
+    </div>
+    <div class="field">
+      <label for="f-ticker">{{ texts.filter.ticker }}</label>
+      <div class="input-group"><input id="f-ticker" type="text" name="ticker" value="{{ filters.ticker }}" autocomplete="off"></div>
+    </div>
+    <div class="field">
+      <label for="f-type">{{ texts.filter.type }}</label>
+      <div class="input-group">
+        <select id="f-type" name="type">
+          <option value="">{{ texts.filter.all_types }}</option>
+          {% for ty in types %}<option value="{{ ty.value }}"{% if filters.type == ty.value %} selected{% endif %}>{{ t.types[ty.value] }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="button">{{ texts.filter.apply }}</button>
+      <a class="button button--ghost" href="/transactions">{{ texts.filter.reset }}</a>
+    </div>
+  </form>
+
+  {% if filter_errors %}
+    <div class="errors" role="alert"><ul>{% for e in filter_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+  {% endif %}
+
+  <section class="card table-card">
+    <p class="table-meta">{{ texts.count.format(total=result.total | num) }}</p>
+    {% if result.items %}
+      <div class="table-scroll table-scroll--tall">
+        <table class="tx-table">
+          <thead><tr>
+            {% for key in ["executed_at", "type", "ticker", "isin", "quantity", "price", "amount", "fee", "reference"] %}
+              <th scope="col"{% if key in ["type", "ticker", "isin", "reference"] %} class="text"{% endif %}>{{ texts.columns[key] }}</th>
+            {% endfor %}
+          </tr></thead>
+          <tbody>
+            {% for tx in result.items %}
+              <tr>
+                <th scope="row">{{ tx.executed_at | dt }}</th>
+                <td class="text">{{ type_badge(tx) }}</td>
+                <td class="text">{{ tx.ticker or "–" }}</td>
+                <td class="text mono">{{ tx.isin or "–" }}</td>
+                <td>{{ tx.quantity | qty if tx.quantity is not none else "–" }}</td>
+                <td>{{ tx.price | money(tx.currency) if tx.price is not none else "–" }}</td>
+                <td>{{ tx_amount(tx) }}</td>
+                <td>{{ tx.fee | money(tx.currency) }}</td>
+                <td class="text mono">{{ tx.external_id or "–" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pages > 1 %}
+        <nav class="pager" aria-label="Lapozás">
+          {% if current_page > 1 %}<a class="button button--ghost" href="{{ query(current_page - 1) }}">{{ texts.prev }}</a>{% endif %}
+          <span>{{ texts.page.format(page=current_page, pages=pages) }}</span>
+          {% if current_page < pages %}<a class="button button--ghost" href="{{ query(current_page + 1) }}">{{ texts.next }}</a>{% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <p class="empty">{{ texts.empty }}</p>
+    {% endif %}
+  </section>
+{% endblock %}

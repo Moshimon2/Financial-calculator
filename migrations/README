@@ -1,0 +1,7 @@
+Alembic migrations for fincalc.
+
+New migration after changing src/fincalc/db/models.py:
+    uv run alembic revision --autogenerate -m "short description"
+Apply:
+    uv run alembic upgrade head
+The database URL comes from $FINCALC_DATABASE_URL (default sqlite:///./data/fincalc.db).

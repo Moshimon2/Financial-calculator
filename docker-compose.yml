@@ -1,0 +1,31 @@
+# fincalc - local build from this checkout (development / testing).
+# For the OMV server use docker-compose.omv.yml (ready-made image from GHCR).
+#
+# Settings come from the .env file next to this file (see .env.example).
+
+services:
+  fincalc:
+    build: .
+    image: fincalc:local
+    container_name: fincalc
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${FINCALC_PORT:-8090}:8000"
+    volumes:
+      - ${FINCALC_DATA_DIR:-./data}:/app/data
+    environment:
+      FINCALC_DATABASE_URL: sqlite:////app/data/fincalc.db
+      FINCALC_TIMEZONE: ${FINCALC_TIMEZONE:-Europe/Budapest}
+      FINCALC_LOG_LEVEL: ${FINCALC_LOG_LEVEL:-info}
+      TZ: ${FINCALC_TIMEZONE:-Europe/Budapest}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

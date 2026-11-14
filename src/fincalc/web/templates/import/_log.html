@@ -1,0 +1,27 @@
+{% set texts = t.import %}
+<section id="import-log" class="card table-card"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <h2>{{ texts.log_title }}</h2>
+  {% if imports %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          {% for key in ["imported_at", "filename", "total", "new", "duplicate", "failed"] %}<th scope="col"{% if key == "filename" %} class="text"{% endif %}>{{ texts.log_columns[key] }}</th>{% endfor %}
+        </tr></thead>
+        <tbody>
+          {% for i in imports %}
+            <tr>
+              <th scope="row">{{ i.imported_at | dt }}</th>
+              <td class="text">{{ i.filename }}</td>
+              <td>{{ i.rows_total | num }}</td>
+              <td>{{ i.rows_new | num }}</td>
+              <td>{{ i.rows_duplicate | num }}</td>
+              <td>{{ i.rows_failed | num }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">{{ texts.log_empty }}</p>
+  {% endif %}
+</section>

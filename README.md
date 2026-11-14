@@ -3,8 +3,8 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (1. lépés – projektváz)**. A funkciók lépésenként érkeznek,
-> lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
+> Állapot: **az MVP kész** (mind a 9 lépés). Nyitott kérdések: `docs/formulas.md` vége,
+> valamint `grep -rn "TODO(open-question)" src config`.
 
 ## Alapelvek
 
@@ -55,20 +55,206 @@ uv run ruff format --check
 uv run mypy src
 ```
 
+### Indítás helyben
+
+```bash
+uv run uvicorn fincalc.api.main:app --reload
+```
+
+- Webes felület: <http://localhost:8000/>
+- Swagger UI: <http://localhost:8000/docs>
+- Health: <http://localhost:8000/api/v1/health>
+- Kalkulátorok: `POST /api/v1/calc/compound`, `/inflation`, `/etf-costs`, `/tbsz`
+- Import: `POST /api/v1/imports/lightyear/preview` (multipart `file`),
+  `POST /api/v1/imports/{preview_id}/confirm`, `GET /api/v1/imports`
+- Tranzakciók: `GET /api/v1/transactions` (szűrés: `date_from`, `date_to`, `ticker`, `type`,
+  lapozás: `limit`, `offset`), `GET /api/v1/transactions/latest`
+
+Példa:
+
+```bash
+curl -X POST localhost:8000/api/v1/calc/compound -H 'content-type: application/json' -d '{"initial_amount": 0, "monthly_contribution": 50000, "annual_return_pct": 7, "years": 20, "annual_inflation_pct": 4}'
+```
+
+A pénzösszegek a válaszban kerekítetlen decimális stringek (pl. `"26046332.99127..."`);
+a kerekítés a megjelenítő feladata. Bemenetként szám és string is elfogadott.
+
+### Adatbázis
+
+SQLite + SQLModel, a séma Alembic migrációkkal követve. Az adatbázis helye a
+`FINCALC_DATABASE_URL` környezeti változóból jön (alapértelmezés: `sqlite:///./data/fincalc.db`).
+
+Induláskor az app automatikusan lefuttatja a migrációkat (`FINCALC_AUTO_MIGRATE=0`
+kikapcsolja). Kézzel:
+
+```bash
+uv run alembic upgrade head
+```
+
+Modellváltozás után új migráció:
+
+```bash
+uv run alembic revision --autogenerate -m "rövid leírás"
+```
+
+- Táblák: `imports` (importnapló) és `transactions` (`src/fincalc/db/models.py`).
+- A pénzösszegek pontosan, szövegként tárolódnak (`DecimalText`), a dátumok UTC-ben (`UTCDateTime`).
+- Duplikátumszűrés a `dedup_hash` egyedi mezővel: bróker-azonosító, vagy ha nincs,
+  dátum + ticker + darab + összeg hash-e (`fincalc.core.transactions`).
+
+### Lightyear import
+
+1. Lightyear webapp → profil ikon → **Settings** → **Account statement** → időszak →
+   **CSV** export.
+2. A felületen: **Import** oldal → fájl kiválasztása → **Előnézet**: új / duplikátum /
+   hibás / kihagyott sorok, a hibás sorok sorszámmal és okkal.
+3. **Mentés** gomb: csak az új tranzakciók kerülnek be; ugyanaz a fájl kétszer
+   importálva nem hoz létre dupla sort. A feltöltött fájl nem kerül lemezre.
+
+Parancssorból ugyanez:
+
+```bash
+uv run fincalc import lightyear path/to/AccountStatement.csv
+```
+
+(`--yes` kérdés nélkül ment.) Dockerben:
+
+```bash
+docker exec -it fincalc fincalc import lightyear /app/data/AccountStatement.csv
+```
+
+- Importált típusok: vétel, eladás, osztalék, befizetés, kivét, díj. A többi (pl.
+  `Conversion` – devizaváltás) kimarad, és az előnézetben látszik.
+- Az oszlopnevek leképezése egy helyen van: `src/fincalc/importers/lightyear.py`
+  (`COLUMNS`, `TYPES`, `DATE_FORMAT`). Új bróker: `BrokerImporter` alosztály +
+  regisztráció az `IMPORTERS`-ben.
+- Minta: `tests/importers/fixtures/lightyear_account_statement.csv` (anonimizált).
+
+### Frontend
+
+- Szerveroldali Jinja2 sablonok (`src/fincalc/web/templates`), HTMX élő frissítéssel
+  (gépelés után 400 ms-mal újraszámol), Chart.js grafikonok.
+- A HTMX és a Chart.js a repóban van (`web/static/vendor/`), így internet nélkül is működik.
+- Minden UI-szöveg: `src/fincalc/web/i18n/hu.py`; számformázás: `src/fincalc/web/formatting.py`
+  (Jinja filterek: `huf`, `num`, `pct`).
+- Világos/sötét mód a rendszerbeállítás szerint (CSS változók, `prefers-color-scheme`).
+
 Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden commit előtt.
 
 ## Fejlesztési sorrend
 
 1. ✅ Váz: uv, mappastruktúra, ruff, mypy, pytest
-2. core – kamatos kamat és infláció
-3. core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
-4. FastAPI + kalkulátor végpontok
-5. Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
-6. Adatbázis: SQLModel, Alembic, repository
-7. Lightyear importer
-8. Dashboard véglegesítése
-9. Docker + OMV telepítési leírás
+2. ✅ core – kamatos kamat és infláció
+3. ✅ core – ETF költségek és TBSZ, `config/tax_hu.yaml`, `docs/formulas.md`
+4. ✅ FastAPI + kalkulátor végpontok
+5. ✅ Frontend a kalkulátorokhoz (Jinja2 + HTMX + Chart.js)
+6. ✅ Adatbázis: SQLModel, Alembic, repository
+7. ✅ Dashboard véglegesítése: utolsó vásárlás kártya és összesítők, tranzakció API
+8. ✅ Docker + OMV telepítési leírás, GitHub Actions image build (GHCR)
+9. ✅ Lightyear importer, import és tranzakciók oldal, CLI
 
-## Futtatás Dockerben (OMV)
+## Futtatás Dockerben
 
-A 9. lépésben kerül kidolgozásra.
+Egy konténer (`python:3.12-slim`, több lépcsős build, nem root felhasználó), az SQLite
+adatbázis egy kötetre kerül, így újraépítésnél sem vész el. Induláskor lefutnak az Alembic
+migrációk. A konténer a 8000-es porton figyel, a host felé alapból a **8090**-es port megy.
+
+**Kész image:** minden `main` ágra feltöltött változás után a GitHub Actions
+(`.github/workflows/docker.yml`) lefuttatja az ellenőrzéseket (ruff, mypy, pytest), majd
+megépíti az image-et (amd64 + arm64), és feltölti ide:
+`ghcr.io/moshimon2/financial-calculator` (`latest` és `sha-<rövid hash>` címkével).
+A szerverre így nem kell kódot másolni, a repó lehet privát, a frissítés egy gombnyomás.
+
+| Fájl | Mire |
+|---|---|
+| `docker-compose.omv.yml` | OMV / szerver: a kész image-et húzza le a GHCR-ről |
+| `docker-compose.yml` | Helyi build ebből a mappából (fejlesztés, tesztelés) |
+
+Beállítások (`.env.example`):
+
+| Változó | Alapérték | Jelentés |
+|---|---|---|
+| `FINCALC_DATA_DIR` | – (OMV-n kötelező) | Host mappa az adatbázisnak (OMV-n a HDD-n!) |
+| `FINCALC_PORT` | `8090` | Host port |
+| `PUID` / `PGID` | `1000` / `100` | Ezzel a user/csoporttal fut a konténer; írnia kell a mappát |
+| `FINCALC_TIMEZONE` | `Europe/Budapest` | Megjelenítési időzóna (tárolás UTC-ben) |
+| `FINCALC_LOG_LEVEL` | `info` | `critical`, `error`, `warning`, `info`, `debug` |
+
+### Helyben (fejlesztői gépen)
+
+```bash
+cp .env.example .env
+```
+
+```bash
+docker compose up -d --build
+```
+
+Felület: <http://localhost:8090>
+
+### Telepítés OMV-re a Compose plugin felületén (terminál nélkül)
+
+Előfeltétel: OMV 7, telepített **openmediavault-compose** plugin
+(*Rendszer → Bővítmények*), és a *Szolgáltatások → Compose → Beállítások* alatt
+megadott mappa a compose fájloknak.
+
+**0. Egyszeri beállítás: hozzáférés az image-hez.** Privát repóból a GitHub az image-et
+is privátként hozza létre (az első sikeres `main` build után jelenik meg). Két lehetőség:
+
+- **Egyszerűbb:** tedd nyilvánossá **csak az image-et**, a kód repója privát marad.
+  GitHub → a profilod → **Packages** → `financial-calculator` → **Package settings** →
+  **Change visibility** → **Public**. Az image-ben nincs jelszó és nincs adat, csak a program
+  (de mivel Python, aki letölti, a forrásfájlokat is látja benne).
+- **Ha az image is privát maradjon:** készíts egy GitHub tokent `read:packages` joggal
+  (GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)),
+  és SSH-ban a szerveren egyszer lépj be vele (jelszóként a tokent add meg):
+
+  ```bash
+  docker login ghcr.io -u Moshimon2
+  ```
+
+1. **Adatmappa a HDD-n.** *Tárhely → Megosztott mappák → Létrehozás*: név `fincalc`,
+   fájlrendszer: a **HDD** (ne a rendszer SSD), jogosultság az alapértelmezett
+   („Administrator: read/write, Users: read/write, Others: read-only”).
+   Mentés után a listában látszik az abszolút útvonal, pl.
+   `/srv/dev-disk-by-uuid-1234abcd-…/fincalc/` – ezt jegyezd fel.
+2. **Compose fájl.** *Szolgáltatások → Compose → Fájlok → Létrehozás (+)*:
+   - **Név:** `fincalc`
+   - **Fájl:** másold be a repó `docker-compose.omv.yml` tartalmát változtatás nélkül.
+   - **Környezet (Environment):** másold be ezt, az útvonalat az 1. lépésből cserélve:
+
+     ```
+     FINCALC_DATA_DIR=/srv/dev-disk-by-uuid-1234abcd-…/fincalc
+     FINCALC_PORT=8090
+     PUID=1000
+     PGID=100
+     FINCALC_TIMEZONE=Europe/Budapest
+     FINCALC_LOG_LEVEL=info
+     ```
+
+     A `PGID=100` az OMV `users` csoportja: az alapértelmezett jogosultságú megosztott
+     mappát ez a csoport írhatja, így nincs szükség `chown`-ra.
+   - Mentés.
+3. **Indítás.** Jelöld ki a `fincalc` sort, és nyomd meg az **Up** gombot. Letölti az
+   image-et és elindítja; pár másodperc múlva az állapota *healthy*
+   (*Szolgáltatások → Compose → Konténerek*).
+4. **Megnyitás:** `http://<omv-ip-cime>:8090`
+
+**Frissítés új verzióra:** a `fincalc` sornál **Up**. A `pull_policy: always` miatt
+mindig a legfrissebb image-et tölti le, az adatbázis-migráció automatikusan lefut,
+az adatok a megosztott mappában maradnak.
+
+**Ha a konténer újraindul és nem lesz healthy:** a naplóban
+(*Konténerek → fincalc → Napló*) a `Database folder … is not writable` üzenet azt
+jelenti, hogy a `PUID`/`PGID` nem írhatja az adatmappát – ellenőrizd az 1. lépés
+jogosultságait vagy a `PGID` értékét. Ha az image letöltése `denied` / `unauthorized`
+hibával áll meg, a 0. lépés hiányzik.
+
+**Mentés:** a `fincalc` megosztott mappát vedd fel a meglévő backup rutinba
+(pl. *Szolgáltatások → Rsync* vagy a backup plugin). Az SQLite fájlt akkor a
+legbiztonságosabb másolni, amikor épp nem írsz bele (pl. éjszakai mentés), vagy
+mentés előtt **Down**.
+
+**Biztonság:** az MVP-ben nincs bejelentkezés. Csak a helyi hálózaton használd,
+ne nyiss rá portot a routeren, és ne tedd ki reverse proxyval az internetre, amíg
+nincs hitelesítés (lásd roadmap).

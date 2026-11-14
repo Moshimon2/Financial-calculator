@@ -1,0 +1,38 @@
+# Hungarian tax rules used by the calculators (fincalc.core.tax).
+#
+# These rules change over time: verify every value against a current official
+# source (NAV, net.jogtar.hu) before relying on the results, and update
+# `last_verified` when you do. Percentages are in percent (15 = 15%).
+#
+# Abbreviations: pit = personal income tax (SZJA),
+#                social = social contribution tax (szociális hozzájárulási adó, szocho).
+
+last_verified: null  # TODO: set to the date of the last check against an official source
+
+# Regular (non-TBSZ) brokerage account: tax on realised capital gains.
+regular_account:
+  pit_pct: 15
+  social_pct: 13
+
+# TBSZ (tartós befektetési szerződés).
+# Year 0 is the collection year (gyűjtőév); the lock period (lekötési idő)
+# starts after it. `min_lock_years` = full lock years completed at withdrawal.
+# The tier with the largest min_lock_years <= held years applies.
+tbsz:
+  lock_years: 5
+  tiers:
+    - min_lock_years: 0   # broken before the end of lock year 3
+      pit_pct: 15
+      social_pct: 13
+    - min_lock_years: 3   # at the end of lock year 3
+      pit_pct: 10
+      # TODO(open-question): social contribution tax after lock year 3 is
+      # unverified. Assumed 0% for now; confirm with Simon / an official source.
+      social_pct: 0
+    - min_lock_years: 5   # after lock year 5
+      pit_pct: 0
+      social_pct: 0
+
+# Not modelled in the MVP (see docs/formulas.md):
+# - the yearly cap of the social contribution tax (szocho felső korlát)
+# - loss compensation (veszteségkompenzáció)

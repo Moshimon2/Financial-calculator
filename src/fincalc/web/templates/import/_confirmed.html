@@ -1,0 +1,10 @@
+{% set texts = t.import %}
+{% if record %}
+  <div class="notice notice--ok" role="status">
+    {{ texts.saved.format(new=record.rows_new, duplicate=record.rows_duplicate, failed=record.rows_failed) }}
+    <a href="/transactions">{{ t.nav.transactions }} →</a>
+  </div>
+{% else %}
+  <div class="errors" role="alert"><p>{{ texts.expired }}</p></div>
+{% endif %}
+{% with oob=True %}{% include "import/_log.html" %}{% endwith %}

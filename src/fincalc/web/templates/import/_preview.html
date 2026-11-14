@@ -1,0 +1,72 @@
+{% from "macros_tx.html" import tx_amount, type_badge %}
+{% set texts = t.import %}
+{% if message %}
+  <div class="errors" role="alert"><p>{{ message }}</p></div>
+{% else %}
+  <section class="card preview">
+    <h2>{{ texts.preview_title.format(filename=preview.filename) }}</h2>
+    <div class="stats stats--4">
+      <div class="stat"><span class="stat-label">{{ texts.new }}</span><span class="stat-value">{{ preview.rows_new | num }}</span></div>
+      <div class="stat"><span class="stat-label">{{ texts.duplicate }}</span><span class="stat-value">{{ preview.rows_duplicate | num }}</span></div>
+      <div class="stat"><span class="stat-label">{{ texts.failed }}</span><span class="stat-value">{{ preview.errors | length | num }}</span></div>
+      <div class="stat"><span class="stat-label">{{ texts.skipped }}</span><span class="stat-value">{{ preview.skipped | length | num }}</span></div>
+    </div>
+    {% if preview.skipped %}
+      <p class="hint">{{ texts.skipped_note.format(types=preview.skipped | map(attribute="broker_type") | unique | join(", ")) }}</p>
+    {% endif %}
+
+    {% if preview.errors %}
+      <div class="errors">
+        <p>{{ texts.errors_title }}</p>
+        <ul>
+          {% for e in preview.errors %}
+            <li>{{ texts.error_line.format(line=e.line, column=e.column, message=texts.row_errors[e.code.value].format(value=e.value)) }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if preview.rows %}
+      <div class="table-scroll">
+        <table class="tx-table">
+          <thead><tr>
+            <th scope="col">#</th>
+            <th scope="col">{{ t.transactions.columns.executed_at }}</th>
+            <th scope="col" class="text">{{ t.transactions.columns.type }}</th>
+            <th scope="col" class="text">{{ t.transactions.columns.ticker }}</th>
+            <th scope="col">{{ t.transactions.columns.quantity }}</th>
+            <th scope="col">{{ t.transactions.columns.amount }}</th>
+            <th scope="col">{{ t.transactions.columns.fee }}</th>
+            <th scope="col" class="text">{{ t.transactions.columns.reference }}</th>
+          </tr></thead>
+          <tbody>
+            {% for r in preview.rows %}
+              {% set tx = r.transaction %}
+              <tr class="row--{{ r.status.value }}">
+                <th scope="row">{{ r.line }}</th>
+                <td>{{ tx.executed_at | dt }}</td>
+                <td class="text">{{ type_badge(tx) }}{% if r.status.value == "duplicate" %} <span class="badge badge--muted">{{ texts.duplicate }}</span>{% endif %}</td>
+                <td class="text">{{ tx.ticker or "–" }}</td>
+                <td>{{ tx.quantity | qty if tx.quantity is not none else "–" }}</td>
+                <td>{{ tx_amount(tx) }}</td>
+                <td>{{ tx.fee | money(tx.currency) }}</td>
+                <td class="text mono">{{ tx.external_id or "–" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <div class="preview-actions">
+      {% if preview.rows_new %}
+        <button class="button" hx-post="/import/{{ preview.id }}/confirm" hx-target="#import-result">
+          {{ texts.confirm.format(count=preview.rows_new) }}
+        </button>
+      {% else %}
+        <p class="hint">{{ texts.nothing_new }}</p>
+      {% endif %}
+      <a class="button button--ghost" href="/import">{{ texts.cancel }}</a>
+    </div>
+  </section>
+{% endif %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "macros.html" import calc_form, how %}
+{% set texts = t[page] %}
+{% block title %}{{ texts.title }}{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>{{ texts.title }}</h1>
+    <p class="lead">{{ texts.lead }}</p>
+  </header>
+  <div class="calc">
+    {{ calc_form(texts, result_url, form, error_fields, form.keys() | list) }}
+    <section id="result" class="calc-result" aria-live="polite">
+      {% include "calc/_" ~ page ~ "_result.html" %}
+    </section>
+  </div>
+  {{ how(texts.how) }}
+{% endblock %}

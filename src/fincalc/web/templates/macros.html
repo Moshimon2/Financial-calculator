@@ -1,0 +1,74 @@
+{% macro field(texts, name, form, error_fields, inputmode="decimal") -%}
+  {%- set spec = texts.fields[name] -%}
+  <div class="field{% if name in error_fields %} field--invalid{% endif %}">
+    <label for="f-{{ name }}">{{ spec.label }}</label>
+    <div class="input-group">
+      <input id="f-{{ name }}" name="{{ name }}" type="text" inputmode="{{ inputmode }}"
+             autocomplete="off" value="{{ form[name] }}"
+             {% if name in error_fields %}aria-invalid="true"{% endif %}
+             {% if spec.hint %}aria-describedby="h-{{ name }}"{% endif %}>
+      {% if spec.suffix %}<span class="suffix" aria-hidden="true">{{ spec.suffix }}</span>{% endif %}
+    </div>
+    {% if spec.hint %}<small id="h-{{ name }}" class="hint">{{ spec.hint }}</small>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro calc_form(texts, result_url, form, error_fields, names) -%}
+  <form class="card calc-form" hx-post="{{ result_url }}" hx-target="#result"
+        hx-trigger="input delay:400ms, submit" hx-sync="this:replace"
+        hx-indicator="#result" novalidate>
+    {% for name in names %}
+      {{ field(texts, name, form, error_fields,
+               "numeric" if name in ("years", "lock_years_held") else "decimal") }}
+    {% endfor %}
+  </form>
+{%- endmacro %}
+
+{% macro stat(label, value, hero=False, note=None) -%}
+  <div class="stat{% if hero %} stat--hero{% endif %}">
+    <span class="stat-label">{{ label }}</span>
+    <span class="stat-value">{{ value }}</span>
+    {% if note %}<span class="stat-note">{{ note }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro errors_box(errors) -%}
+  <div class="errors" role="alert">
+    <p>{{ t.common.errors_title }}</p>
+    <ul>
+      {% for label, message in errors %}<li><strong>{{ label }}:</strong> {{ message }}</li>{% endfor %}
+    </ul>
+  </div>
+{%- endmacro %}
+
+{% macro how(items) -%}
+  <details class="how">
+    <summary>{{ t.common.how_title }}</summary>
+    <ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+  </details>
+{%- endmacro %}
+
+{% macro chart_block(chart, table, chart_id) -%}
+  <figure class="chart card">
+    <figcaption class="visually-hidden">{{ t.common.chart_label }}</figcaption>
+    <div class="chart-canvas">
+      <canvas data-chart="{{ chart_id }}" role="img" aria-label="{{ t.common.chart_label }}"></canvas>
+    </div>
+    <script type="application/json" id="{{ chart_id }}">{{ chart | tojson }}</script>
+    <details class="table-view">
+      <summary>{{ t.common.table_title }}</summary>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th scope="col">{{ t.common.year }}</th>
+            {% for d in chart.datasets %}<th scope="col">{{ d.label }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in table %}
+              <tr><th scope="row">{{ row[0] }}</th>
+                {% for v in row[1:] %}<td>{{ v | huf }}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </figure>
+{%- endmacro %}

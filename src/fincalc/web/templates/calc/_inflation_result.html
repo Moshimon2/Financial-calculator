@@ -1,0 +1,9 @@
+{% from "macros.html" import stat, errors_box %}
+{% set texts = t.inflation %}
+{% if errors %}{{ errors_box(errors) }}{% else %}
+  <div class="stats">
+    {{ stat(texts.real, result.real | huf, hero=True) }}
+    {{ stat(texts.nominal, result.nominal | huf) }}
+    {{ stat(texts.loss, result.purchasing_power_loss | huf) }}
+  </div>
+{% endif %}
