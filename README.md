@@ -3,8 +3,8 @@
 Self-hostolt pénzügyi kalkulátor magyar befektetőknek: kamatos kamat, infláció,
 ETF költségek (TER), TBSZ adóelőny, valamint Lightyear tranzakciók importja CSV-ből.
 
-> Állapot: **fejlesztés alatt (8. lépés – Docker és OMV telepítés; a Lightyear import még hátravan)**. A funkciók lépésenként érkeznek,
-> lásd a [Fejlesztési sorrend](#fejlesztési-sorrend) részt.
+> Állapot: **az MVP kész** (mind a 9 lépés). Nyitott kérdések: `docs/formulas.md` vége,
+> valamint `grep -rn "TODO(open-question)" src config`.
 
 ## Alapelvek
 
@@ -65,6 +65,8 @@ uv run uvicorn fincalc.api.main:app --reload
 - Swagger UI: <http://localhost:8000/docs>
 - Health: <http://localhost:8000/api/v1/health>
 - Kalkulátorok: `POST /api/v1/calc/compound`, `/inflation`, `/etf-costs`, `/tbsz`
+- Import: `POST /api/v1/imports/lightyear/preview` (multipart `file`),
+  `POST /api/v1/imports/{preview_id}/confirm`, `GET /api/v1/imports`
 - Tranzakciók: `GET /api/v1/transactions` (szűrés: `date_from`, `date_to`, `ticker`, `type`,
   lapozás: `limit`, `offset`), `GET /api/v1/transactions/latest`
 
@@ -100,6 +102,34 @@ uv run alembic revision --autogenerate -m "rövid leírás"
 - Duplikátumszűrés a `dedup_hash` egyedi mezővel: bróker-azonosító, vagy ha nincs,
   dátum + ticker + darab + összeg hash-e (`fincalc.core.transactions`).
 
+### Lightyear import
+
+1. Lightyear webapp → profil ikon → **Settings** → **Account statement** → időszak →
+   **CSV** export.
+2. A felületen: **Import** oldal → fájl kiválasztása → **Előnézet**: új / duplikátum /
+   hibás / kihagyott sorok, a hibás sorok sorszámmal és okkal.
+3. **Mentés** gomb: csak az új tranzakciók kerülnek be; ugyanaz a fájl kétszer
+   importálva nem hoz létre dupla sort. A feltöltött fájl nem kerül lemezre.
+
+Parancssorból ugyanez:
+
+```bash
+uv run fincalc import lightyear path/to/AccountStatement.csv
+```
+
+(`--yes` kérdés nélkül ment.) Dockerben:
+
+```bash
+docker exec -it fincalc fincalc import lightyear /app/data/AccountStatement.csv
+```
+
+- Importált típusok: vétel, eladás, osztalék, befizetés, kivét, díj. A többi (pl.
+  `Conversion` – devizaváltás) kimarad, és az előnézetben látszik.
+- Az oszlopnevek leképezése egy helyen van: `src/fincalc/importers/lightyear.py`
+  (`COLUMNS`, `TYPES`, `DATE_FORMAT`). Új bróker: `BrokerImporter` alosztály +
+  regisztráció az `IMPORTERS`-ben.
+- Minta: `tests/importers/fixtures/lightyear_account_statement.csv` (anonimizált).
+
 ### Frontend
 
 - Szerveroldali Jinja2 sablonok (`src/fincalc/web/templates`), HTMX élő frissítéssel
@@ -121,8 +151,7 @@ Mindhárom ellenőrzésnek (pytest, ruff, mypy) zöldnek kell lennie minden comm
 6. ✅ Adatbázis: SQLModel, Alembic, repository
 7. ✅ Dashboard véglegesítése: utolsó vásárlás kártya és összesítők, tranzakció API
 8. ✅ Docker + OMV telepítési leírás
-9. Lightyear importer, import és tranzakciók oldal – **egy valódi, anonimizált
-   Lightyear CSV mintára vár** (még nincs Lightyear fiók), ezért került a végére.
+9. ✅ Lightyear importer, import és tranzakciók oldal, CLI
 
 ## Futtatás Dockerben
 

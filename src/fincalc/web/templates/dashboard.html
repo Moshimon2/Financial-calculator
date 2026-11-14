@@ -24,7 +24,7 @@
         {% endif %}
       {% else %}
         <span class="stat-value">–</span>
-        <span class="stat-note">{{ texts.no_data }}</span>
+        <span class="stat-note">{{ texts.no_data }} <a href="/import">{{ texts.import_link }}</a></span>
       {% endif %}
     </div>
     <div class="stat">
@@ -43,7 +43,7 @@
   </section>
   <h2 class="section-title">{{ texts.calculators }}</h2>
   <div class="cards">
-    {% for key, href in nav if key != "dashboard" %}
+    {% for key, href in nav if key in texts.cards %}
       <a class="card link-card" href="{{ href }}">
         <h3>{{ t.nav[key] }}</h3>
         <p>{{ texts.cards[key] }}</p>

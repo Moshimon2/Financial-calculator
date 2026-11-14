@@ -193,7 +193,12 @@ def _register(page: CalcPage) -> None:
 for _page in PAGES:
     _register(_page)
 
-templates.env.globals["nav"] = [("dashboard", "/")] + [(p.key, f"/calc/{p.path}") for p in PAGES]
+templates.env.globals["nav"] = [
+    ("dashboard", "/"),
+    *((p.key, f"/calc/{p.path}") for p in PAGES),
+    ("transactions", "/transactions"),
+    ("import", "/import"),
+]
 
 
 @router.get("/", name="dashboard")

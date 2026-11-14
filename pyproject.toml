@@ -16,6 +16,9 @@ dependencies = [
     "uvicorn[standard]>=0.32",
 ]
 
+[project.scripts]
+fincalc = "fincalc.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",

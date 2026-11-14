@@ -54,10 +54,12 @@ class Transaction(BaseModel):
         """Stable identity for duplicate detection.
 
         Uses the broker's transaction ID when present, otherwise
-        date + ticker + quantity + amount (as the spec requires).
+        date + ticker + quantity + amount (as the spec requires). The ID is
+        combined with type and currency because one broker reference can cover
+        several rows (e.g. Lightyear currency conversions: one row per leg).
         """
         if self.external_id:
-            key = f"{self.broker}|id|{self.external_id}"
+            key = f"{self.broker}|id|{self.external_id}|{self.type.value}|{self.currency}"
         else:
             key = "|".join(
                 (

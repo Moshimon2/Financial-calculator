@@ -139,3 +139,23 @@ A kódban `TODO(open-question)` jelöléssel szerepelnek
    friss hivatalos forrásból ellenőrizendő.
 2. **Befizetés(ek) a gyűjtőévben** (`core/models.py`, `TbszInput`): egyösszegű vagy havi?
    Jelenleg mindkettő támogatott; a felület alapértéke (havi) egyeztetendő.
+3. **Lightyear típusok és előjelek** (`src/fincalc/importers/lightyear.py`): valódi
+   exportban eddig csak `Buy`, `Deposit` és `Conversion` sor szerepelt. Az eladás,
+   osztalék, kivét és díj címkéje (`Sell`, `Dividend`, `Withdrawal`, `Fee`) és az
+   összeg-szabály (kimenő: bruttó összeg, bejövő: nettó összeg) feltételezés; az első
+   ilyen sor után ellenőrizendő. A `Tax Amt.` oszlopot (osztalékadó) még nem tároljuk.
+
+## 5. Lightyear CSV értelmezése
+
+| Oszlop | Mező | Megjegyzés |
+|---|---|---|
+| `Date` | `executed_at` | `DD/MM/YYYY HH:MM:SS`, UTC (egyezik a trade confirmation „Executed on (UTC)” idejével) |
+| `Reference` | `external_id` | `OR-` megbízás, `DT-` befizetés, `CN-` devizaváltás (lábanként egy sor) |
+| `Type` | `type` | lásd a nyitott kérdéseket |
+| `Ticker`, `ISIN`, `CCY` | `ticker`, `isin`, `currency` | |
+| `Quantity`, `Price/share` | `quantity`, `price` | pontos `Decimal`, akár 9 tizedes |
+| `Gross Amount`, `Net Amt.` | `amount` | vételnél bruttó = nettó + díj, ez hagyja el a számlát → negatív |
+| `Fee` | `fee` | |
+
+Duplikátumszűrés: `Reference` + típus + deviza hash-e (egy referencia több sort is
+lefedhet, pl. devizaváltás két lába). Ha nincs referencia: dátum + ticker + darab + összeg.

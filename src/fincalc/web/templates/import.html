@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% set texts = t.import %}
+{% block title %}{{ texts.title }}{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <h1>{{ texts.title }}</h1>
+    <p class="lead">{{ texts.lead }}</p>
+  </header>
+  <form class="card upload" hx-post="/import/preview" hx-encoding="multipart/form-data"
+        hx-target="#import-result" hx-indicator="#import-result">
+    <div class="field">
+      <label for="f-file">{{ texts.file }}</label>
+      <input id="f-file" type="file" name="file" accept=".csv,text/csv" required>
+      <small class="hint">{{ texts.how_to }}</small>
+    </div>
+    <button type="submit" class="button">{{ texts.upload }}</button>
+  </form>
+  <div id="import-result" class="import-result" aria-live="polite"></div>
+  {% with oob=False %}{% include "import/_log.html" %}{% endwith %}
+{% endblock %}

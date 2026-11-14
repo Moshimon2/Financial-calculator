@@ -55,6 +55,13 @@ def test_hash_uses_external_id_when_present() -> None:
     assert a.dedup_hash != tx(external_id="LY-2").dedup_hash
 
 
+def test_hash_same_reference_different_leg() -> None:
+    eur = tx(external_id="CN-1", type=TransactionType.FEE, currency="EUR")
+    huf = tx(external_id="CN-1", type=TransactionType.FEE, currency="HUF")
+    sell = tx(external_id="CN-1", type=TransactionType.SELL, currency="EUR")
+    assert len({eur.dedup_hash, huf.dedup_hash, sell.dedup_hash}) == 3
+
+
 def test_hash_without_id_uses_date_ticker_quantity_amount() -> None:
     assert tx().dedup_hash == tx(price=D("101"), fee=D("1")).dedup_hash
     assert tx().dedup_hash == tx(quantity=D("1.50"), amount=D("-150.00")).dedup_hash

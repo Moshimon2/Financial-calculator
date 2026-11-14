@@ -1,0 +1,7 @@
+{% macro tx_amount(tx) -%}
+  <span class="amount{% if tx.amount < 0 %} amount--out{% else %} amount--in{% endif %}">{{ tx.amount | money(tx.currency) }}</span>
+{%- endmacro %}
+
+{% macro type_badge(tx) -%}
+  <span class="type type--{{ tx.type.value }}">{{ t.types[tx.type.value] }}</span>
+{%- endmacro %}
